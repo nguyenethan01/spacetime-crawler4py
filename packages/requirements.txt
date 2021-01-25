@@ -1,2 +1,4 @@
 cbor
 requests
+bs4
+spacetime
