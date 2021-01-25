@@ -6,6 +6,7 @@ visited = set()
 
 def scraper(url, resp):
     links = extract_next_links(url, resp)
+    numWords = word_count(resp)
     print(len(visited))
     return links
 
@@ -42,3 +43,18 @@ def is_valid(url):
   except TypeError:
     print ("TypeError for ", parsed)
     raise
+
+def word_count(resp):
+    if resp.raw_response: # TODO: no raw_response for today.uci.edu...
+        html = resp.raw_response.text
+        soup = BeautifulSoup(resp.raw_response.text, 'lxml')
+
+        for script in soup(["script", "style"]):
+            script.extract()
+
+        text = soup.get_text()
+
+        lines = (line.strip() for line in text.splitlines())
+        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+        text = '\n'.join(chunk for chunk in chunks if chunk)
+        #print(text)
