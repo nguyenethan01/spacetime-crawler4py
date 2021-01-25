@@ -8,7 +8,7 @@ def scraper(url, resp):
 
 def extract_next_links(url, resp):
     # Implementation requred.
-    print(resp)
+    print(resp.raw_response)
     return list()
 
 def is_valid(url):
