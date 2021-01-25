@@ -2,14 +2,26 @@ import re
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 
+visited = set()
+
 def scraper(url, resp):
     links = extract_next_links(url, resp)
-    return [link for link in links if is_valid(link)]
+    print(len(visited))
+    return links
 
 def extract_next_links(url, resp):
-    # Implementation requred.
-    print(resp)
-    return list()
+    nextLinks = set()
+
+    if resp.raw_response:
+        soup = BeautifulSoup(resp.raw_response.text, 'lxml')
+        for link in soup.findAll('a', attrs={'href': re.compile(r'^https?://')}):
+            defragged = link['href'].split('#')[0]
+
+            if defragged not in visited and is_valid(defragged):
+                nextLinks.add(defragged)
+                visited.add(defragged)
+
+    return list(nextLinks)
 
 def is_valid(url):
   try:
@@ -25,7 +37,7 @@ def is_valid(url):
     + r"|epub|dll|cnf|tgz|sha1"
     + r"|thmx|mso|arff|rtf|jar|csv"
     + r"|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower()) and \
-    (re.match(r".*\.(ics.uci.edu/|cs.uci.edu/|informatics.uci.edu/|stat.uci.edu/)$",parsed.netloc.lower()) or re.match(r"today.uci.edu/department/information_computer_sciences/", parsed.netloc.lower() + parsed.path.lower())) 
+    (re.match(r".*\.(ics|cs|informatics|stat)\.uci\.edu$",parsed.netloc.lower()) or re.match(r"today.uci.edu/department/information_computer_sciences(/|$)", parsed.netloc.lower() + parsed.path.lower()))
     
   except TypeError:
     print ("TypeError for ", parsed)

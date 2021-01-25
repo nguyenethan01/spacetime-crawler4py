@@ -8,6 +8,8 @@ def is_valid(url):
     if parsed.scheme not in set(["http", "https"]):
       return False
     print(parsed.netloc.lower() + parsed.path.lower())
+    print(parsed.netloc.lower())
+    print(re.match(r".*\.(ics.uci.edu/|cs.uci.edu/|informatics.uci.edu/|stat.uci.edu/)$",parsed.netloc.lower()))
     return not re.match(
     r".*\.(css|js|bmp|gif|jpe?g|ico"
     + r"|png|tiff?|mid|mp2|mp3|mp4"
@@ -17,7 +19,7 @@ def is_valid(url):
     + r"|epub|dll|cnf|tgz|sha1"
     + r"|thmx|mso|arff|rtf|jar|csv"
     + r"|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower()) and \
-    (re.match(r".*\.(ics.uci.edu/|cs.uci.edu/|informatics.uci.edu/|stat.uci.edu/)$",parsed.netloc.lower()) or re.match(r"today.uci.edu/department/information_computer_sciences/", parsed.netloc.lower() + parsed.path.lower())) 
+    (re.match(r".*\.(ics|cs|informatics|stat)\.uci\.edu$",parsed.netloc.lower()) or re.match(r"today.uci.edu/department/information_computer_sciences(/|$)", parsed.netloc.lower() + parsed.path.lower())) 
     
     
   except TypeError:
