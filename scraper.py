@@ -12,11 +12,13 @@ visited = set()
 
 longest_file, max_tokens = '', 0
 word_freqs = defaultdict(int)
+ics_subs = defaultdict(int)
 
 def scraper(url, resp):
     links = extract_next_links(url, resp)
     numWords = word_count(resp, url)
-    print('\n', sorted(word_freqs.items(), reverse=True, key=lambda x: x[1])[:10], '\n')
+    # print('\n', sorted(word_freqs.items(), reverse=True, key=lambda x: x[1])[:10], '\n')
+    print(ics_subs)
     return links
 
 def extract_next_links(url, resp):
@@ -30,6 +32,7 @@ def extract_next_links(url, resp):
             if defragged not in visited and is_valid(defragged):
                 nextLinks.add(defragged)
                 visited.add(defragged)
+                add_subdomain(defragged)
 
     return list(nextLinks)
 
@@ -86,3 +89,8 @@ def word_count(resp, url):
             if token.lower() not in cached_stopwords:
                 word_freqs[token.lower()] += 1
 
+def add_subdomain(url):
+    parsed = urlparse(url)
+    out = re.match(r'(?P<subdomain>.*)\.ics\.uci\.edu$', parsed.netloc.lower())
+    if out:
+        ics_subs[out.group('subdomain')] += 1
