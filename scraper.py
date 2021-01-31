@@ -26,7 +26,7 @@ def scraper(url, resp):
     # Check for near dups
     simhash = compute_simhash(curr_word_freqs)
     if check_dup(url, simhash): return []
-    print(simhashes[url])
+    # print(simhashes[url])
 
     links = extract_next_links(url, resp)
     # print(len(visited))
@@ -139,7 +139,7 @@ def compute_simhash(word_freqs):
     return fingerprint
 
 def check_dup(url, simhash):
-    print(simhash)
+    # print(simhash)
 
     for _url, _hash in simhashes.items():
         if url == _url: continue
@@ -152,7 +152,7 @@ def check_dup(url, simhash):
                 total += 1
             curr_hash >>= 1
             _hash >>= 1
-        print(_url, total / 32)
+        # print(_url, total / 32)
         if total / 32 >= THRESHOLD:
             return True
     
