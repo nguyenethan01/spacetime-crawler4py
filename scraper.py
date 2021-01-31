@@ -9,6 +9,8 @@ tokenize_pattern = re.compile(r'[a-zA-Z0-9]{2,}')
 cached_stopwords = set(stopwords.words('english'))
 
 visited = set()
+simhashes = {}
+THRESHOLD = 0.9
 
 longest_file, max_tokens = '', 0
 word_freqs = defaultdict(int)
@@ -19,9 +21,15 @@ def scraper(url, resp):
     if resp.status < 200 or resp.status > 399:
         return []
 
+    curr_word_freqs = word_count(resp, url)
+
+    # Check for near dups
+    simhash = compute_simhash(curr_word_freqs)
+    if check_dup(url, simhash): return []
+    print(simhashes[url])
+
     links = extract_next_links(url, resp)
-    numWords = word_count(resp, url)
-    print(len(visited))
+    # print(len(visited))
     # print('\n', sorted(word_freqs.items(), reverse=True, key=lambda x: x[1])[:10], '\n')
     # print(ics_subs)
     return links
@@ -94,12 +102,60 @@ def word_count(resp, url):
             longest_file = url
             
         # Get word frequencies
+        curr_word_freqs = defaultdict(int)
         for token in tokens:
+            curr_word_freqs[token.lower()] += 1
             if token.lower() not in cached_stopwords:
                 word_freqs[token.lower()] += 1
+        
+        return curr_word_freqs
+    
+    return {}
 
 def add_subdomain(url):
     parsed = urlparse(url)
     out = re.match(r'(?P<subdomain>.*)\.ics\.uci\.edu$', parsed.netloc.lower())
     if out:
         ics_subs[out.group('subdomain')] += 1
+
+def compute_simhash(word_freqs):
+    token_hashes = {token: hash(token) for token in word_freqs}
+    vec = [0] * 32
+    
+    for token, _hash in token_hashes.items():
+        for i in range(len(vec)-1, -1, -1):
+            # Add 1 if right-most bit is 1, subtract 1 if 0
+            right = _hash & 1
+            vec[i] += 1 if right else -1
+            _hash >>= 1
+    
+    fingerprint = 0
+    for bit in vec:
+        if bit > 0:
+            fingerprint = (fingerprint << 1) | 1
+        else:
+            fingerprint <<= 1
+    
+    return fingerprint
+
+def check_dup(url, simhash):
+    print(simhash)
+
+    for _url, _hash in simhashes.items():
+        if url == _url: continue
+
+        curr_hash = simhash
+
+        total = 0
+        for i in range(32):
+            if curr_hash & 1 == _hash & 1:
+                total += 1
+            curr_hash >>= 1
+            _hash >>= 1
+        print(_url, total / 32)
+        if total / 32 >= THRESHOLD:
+            return True
+    
+    simhashes[url] = simhash
+    return False
+    
