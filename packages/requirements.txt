@@ -2,3 +2,5 @@ cbor
 requests
 bs4
 spacetime
+lxml
+nltk

@@ -5,7 +5,7 @@ from collections import defaultdict
 from nltk.corpus import stopwords
 # from results import Results
 
-tokenize_pattern = re.compile(r'[\w]{2,}')
+tokenize_pattern = re.compile(r'[a-zA-Z0-9]{2,}')
 cached_stopwords = set(stopwords.words('english'))
 
 visited = set()
@@ -15,19 +15,48 @@ word_freqs = defaultdict(int)
 ics_subs = defaultdict(int)
 
 def scraper(url, resp):
+    # Ignore error status codes
+    if resp.status < 200 or resp.status > 399:
+        return []
+
     links = extract_next_links(url, resp)
     numWords = word_count(resp, url)
+    print(len(visited))
     # print('\n', sorted(word_freqs.items(), reverse=True, key=lambda x: x[1])[:10], '\n')
-    print(ics_subs)
+    # print(ics_subs)
     return links
 
 def extract_next_links(url, resp):
     nextLinks = set()
 
+    # Ignore if no data
     if resp.raw_response:
         soup = BeautifulSoup(resp.raw_response.text, 'lxml')
-        for link in soup.findAll('a', attrs={'href': re.compile(r'^https?://')}):
+        for link in soup.findAll('a', attrs={'href': True}):
             defragged = link['href'].split('#')[0]
+
+            # Handle normal relative urls
+            if not urlparse(defragged).netloc:
+                # filter out mailto's and other invalid urls
+                if re.search(':', defragged): continue
+
+                prev = urlparse(url)
+
+                # Root directory
+                if defragged and defragged[0] == '/':
+                    defragged = prev.scheme + '://' + prev.netloc + defragged
+                # Current directory
+                else:
+                    # Ensure trailing slash
+                    if prev.path and prev.path[-1] == '/':
+                        path = prev.path
+                    else:
+                        path = prev.path + '/'
+
+                    defragged = prev.scheme + '://' + prev.netloc + path + defragged
+            # Handle protocol-relative urls
+            elif not urlparse(defragged).scheme:
+                defragged = urlparse(url).scheme + ':' + defragged
 
             if defragged not in visited and is_valid(defragged):
                 nextLinks.add(defragged)
