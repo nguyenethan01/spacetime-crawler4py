@@ -1,5 +1,5 @@
 import re
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin, urldefrag
 from bs4 import BeautifulSoup
 from collections import defaultdict
 from nltk.corpus import stopwords
@@ -33,30 +33,10 @@ def extract_next_links(url, resp):
     if resp.raw_response:
         soup = BeautifulSoup(resp.raw_response.text, 'lxml')
         for link in soup.findAll('a', attrs={'href': True}):
-            defragged = link['href'].split('#')[0]
+            defragged = urldefrag(link['href'])[0]
 
-            # Handle normal relative urls
-            if not urlparse(defragged).netloc:
-                # filter out mailto's and other invalid urls
-                if re.search(':', defragged): continue
-
-                prev = urlparse(url)
-
-                # Root directory
-                if defragged and defragged[0] == '/':
-                    defragged = prev.scheme + '://' + prev.netloc + defragged
-                # Current directory
-                else:
-                    # Ensure trailing slash
-                    if prev.path and prev.path[-1] == '/':
-                        path = prev.path
-                    else:
-                        path = prev.path + '/'
-
-                    defragged = prev.scheme + '://' + prev.netloc + path + defragged
-            # Handle protocol-relative urls
-            elif not urlparse(defragged).scheme:
-                defragged = urlparse(url).scheme + ':' + defragged
+            # Handle relative urls
+            defragged = urljoin(url, defragged)
 
             if defragged not in visited and is_valid(defragged):
                 nextLinks.add(defragged)
