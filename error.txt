@@ -1,0 +1,67 @@
+Exception in thread Thread-1:
+Traceback (most recent call last):
+  File "/home/braedons/.local/lib/python3.6/site-packages/urllib3/connection.py", line 170, in _new_conn
+    (self._dns_host, self.port), self.timeout, **extra_kw
+  File "/home/braedons/.local/lib/python3.6/site-packages/urllib3/util/connection.py", line 96, in create_connection
+    raise err
+  File "/home/braedons/.local/lib/python3.6/site-packages/urllib3/util/connection.py", line 86, in create_connection
+    sock.connect(sa)
+ConnectionRefusedError: [Errno 111] Connection refused
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/braedons/.local/lib/python3.6/site-packages/urllib3/connectionpool.py", line 706, in urlopen
+    chunked=chunked,
+  File "/home/braedons/.local/lib/python3.6/site-packages/urllib3/connectionpool.py", line 394, in _make_request
+    conn.request(method, url, **httplib_request_kw)
+  File "/home/braedons/.local/lib/python3.6/site-packages/urllib3/connection.py", line 234, in request
+    super(HTTPConnection, self).request(method, url, body=body, headers=headers)
+  File "/usr/lib64/python3.6/http/client.py", line 1254, in request
+    self._send_request(method, url, body, headers, encode_chunked)
+  File "/usr/lib64/python3.6/http/client.py", line 1300, in _send_request
+    self.endheaders(body, encode_chunked=encode_chunked)
+  File "/usr/lib64/python3.6/http/client.py", line 1249, in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+  File "/usr/lib64/python3.6/http/client.py", line 1036, in _send_output
+    self.send(msg)
+  File "/usr/lib64/python3.6/http/client.py", line 974, in send
+    self.connect()
+  File "/home/braedons/.local/lib/python3.6/site-packages/urllib3/connection.py", line 200, in connect
+    conn = self._new_conn()
+  File "/home/braedons/.local/lib/python3.6/site-packages/urllib3/connection.py", line 182, in _new_conn
+    self, "Failed to establish a new connection: %s" % e
+urllib3.exceptions.NewConnectionError: <urllib3.connection.HTTPConnection object at 0x7f97aa85dc50>: Failed to establish a new connection: [Errno 111] Connection refused
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/braedons/.local/lib/python3.6/site-packages/requests/adapters.py", line 449, in send
+    timeout=timeout
+  File "/home/braedons/.local/lib/python3.6/site-packages/urllib3/connectionpool.py", line 756, in urlopen
+    method, url, error=e, _pool=self, _stacktrace=sys.exc_info()[2]
+  File "/home/braedons/.local/lib/python3.6/site-packages/urllib3/util/retry.py", line 573, in increment
+    raise MaxRetryError(_pool, url, error or ResponseError(cause))
+urllib3.exceptions.MaxRetryError: HTTPConnectionPool(host='styx.ics.uci.edu', port=9012): Max retries exceeded with url: /?q=https%3A%2F%2Farchive.ics.uci.edu%2Fml%2Fdatasets.php%3Fformat%3D%26task%3Dcla%26att%3Dcat%26area%3Dsoc%26numAtt%3D%26numIns%3Dgreater1000%26type%3D%26sort%3DnameUp%26view%3Dlist&u=IR+UW21+81842284%2C38644997%2C20281169%2C92897855 (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7f97aa85dc50>: Failed to establish a new connection: [Errno 111] Connection refused',))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib64/python3.6/threading.py", line 916, in _bootstrap_inner
+    self.run()
+  File "/home/braedons/cs121/spacetime-crawler4py/crawler/worker.py", line 22, in run
+    resp = download(tbd_url, self.config, self.logger)
+  File "/home/braedons/cs121/spacetime-crawler4py/utils/download.py", line 11, in download
+    params=[("q", f"{url}"), ("u", f"{config.user_agent}")])
+  File "/home/braedons/.local/lib/python3.6/site-packages/requests/api.py", line 76, in get
+    return request('get', url, params=params, **kwargs)
+  File "/home/braedons/.local/lib/python3.6/site-packages/requests/api.py", line 61, in request
+    return session.request(method=method, url=url, **kwargs)
+  File "/home/braedons/.local/lib/python3.6/site-packages/requests/sessions.py", line 542, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/home/braedons/.local/lib/python3.6/site-packages/requests/sessions.py", line 655, in send
+    r = adapter.send(request, **kwargs)
+  File "/home/braedons/.local/lib/python3.6/site-packages/requests/adapters.py", line 516, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPConnectionPool(host='styx.ics.uci.edu', port=9012): Max retries exceeded with url: /?q=https%3A%2F%2Farchive.ics.uci.edu%2Fml%2Fdatasets.php%3Fformat%3D%26task%3Dcla%26att%3Dcat%26area%3Dsoc%26numAtt%3D%26numIns%3Dgreater1000%26type%3D%26sort%3DnameUp%26view%3Dlist&u=IR+UW21+81842284%2C38644997%2C20281169%2C92897855 (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7f97aa85dc50>: Failed to establish a new connection: [Errno 111] Connection refused',))
+
