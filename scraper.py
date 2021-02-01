@@ -3,20 +3,27 @@ from urllib.parse import urlparse, urljoin, urldefrag
 from bs4 import BeautifulSoup
 from collections import defaultdict
 from nltk.corpus import stopwords
-# from results import Results
+from utils.download import download
+from protego import Protego
 
+# For tokenising
 tokenize_pattern = re.compile(r'[a-zA-Z0-9]{2,}')
 cached_stopwords = set(stopwords.words('english'))
 
-visited = set()
+# For storing robots.txt parsers
+robots = {}
+
+# For duplicate detection
 simhashes = {}
 THRESHOLD = 0.9
 
+# For answering questions 
+visited = set()
 longest_file, max_tokens = '', 0
 word_freqs = defaultdict(int)
 ics_subs = defaultdict(int)
 
-def scraper(url, resp):
+def scraper(url, resp, config):
     # Ignore error status codes
     if resp.status < 200 or resp.status > 399:
         return []
@@ -26,32 +33,33 @@ def scraper(url, resp):
     # Check for near dups
     simhash = compute_simhash(curr_word_freqs)
     if check_dup(url, simhash): return []
-    # print(simhashes[url])
 
-    links = extract_next_links(url, resp)
-    # print(len(visited))
-    # print('\n', sorted(word_freqs.items(), reverse=True, key=lambda x: x[1])[:10], '\n')
-    # print(ics_subs)
+    links = extract_next_links(url, resp, config)
     return links
 
-def extract_next_links(url, resp):
-    nextLinks = set()
+def extract_next_links(url, resp, config):
+    next_links = set()
 
     # Ignore if no data
     if resp.raw_response:
         soup = BeautifulSoup(resp.raw_response.text, 'lxml')
+
         for link in soup.findAll('a', attrs={'href': True}):
             defragged = urldefrag(link['href'])[0]
-
+            
             # Handle relative urls
             defragged = urljoin(url, defragged)
 
-            if defragged not in visited and is_valid(defragged):
-                nextLinks.add(defragged)
-                visited.add(defragged)
-                add_subdomain(defragged)
-
-    return list(nextLinks)
+            # Fetch robots.txt if not found yet
+            defragged_parsed = urlparse(defragged)
+            fetch_robots(defragged, config, next_links)
+            
+            # Add to next_links if valid and robots.txt permits
+            if defragged not in visited and is_valid(defragged) and \
+                    (not robots[defragged_parsed.netloc] or robots[defragged_parsed.netloc].can_fetch(defragged, '*')):
+                add_link(next_links, defragged)
+ 
+    return list(next_links)
 
 def is_valid(url):
     try:
@@ -74,49 +82,58 @@ def is_valid(url):
         print("TypeError for ", parsed)
         raise
 
-
+# Tokenises, gets frequencies
 def word_count(resp, url):
-    if resp.raw_response:  # TODO: no raw_response for today.uci.edu...
-        html = resp.raw_response.text
-        soup = BeautifulSoup(html, 'lxml')
-
-        # Remove html
-        for script in soup(["script", "style"]):
-            script.extract()
-
-        text = soup.get_text()
-
-        lines = (line.strip() for line in text.splitlines())
-        chunks = (phrase.strip()
-                  for line in lines for phrase in line.split("  "))
-
-        text = '\n'.join(chunk for chunk in chunks if chunk)
-
-        # Get tokens
-        tokens = tokenize_pattern.findall(text)
-
-        global max_tokens, longest_file
-        # Check for new max tokens
-        if len(tokens) > max_tokens:
-            max_tokens = len(tokens)
-            longest_file = url
-            
-        # Get word frequencies
-        curr_word_freqs = defaultdict(int)
-        for token in tokens:
-            curr_word_freqs[token.lower()] += 1
-            if token.lower() not in cached_stopwords:
-                word_freqs[token.lower()] += 1
-        
-        return curr_word_freqs
+    if not resp.raw_response:
+        return {}
     
-    return {}
+    html = resp.raw_response.text
+    soup = BeautifulSoup(html, 'lxml')
 
+    # Remove html noise
+    for script in soup(["script", "style"]):
+        script.extract()
+
+    text = soup.get_text()
+
+    lines = (line.strip() for line in text.splitlines())
+    chunks = (phrase.strip()
+                for line in lines for phrase in line.split("  "))
+
+    text = '\n'.join(chunk for chunk in chunks if chunk)
+
+    # Get tokens
+    tokens = tokenize_pattern.findall(text)
+
+    # Check for new max tokens
+    global max_tokens, longest_file
+    if len(tokens) > max_tokens:
+        max_tokens = len(tokens)
+        longest_file = url
+        
+    # Get word frequencies
+    curr_word_freqs = defaultdict(int)
+    for token in tokens:
+        curr_word_freqs[token.lower()] += 1
+        if token.lower() not in cached_stopwords:
+            word_freqs[token.lower()] += 1
+    
+    return curr_word_freqs
+
+# Adds the subdomain to the recorded list if a subdomain of ics.uci.edu
 def add_subdomain(url):
     parsed = urlparse(url)
     out = re.match(r'(?P<subdomain>.*)\.ics\.uci\.edu$', parsed.netloc.lower())
     if out:
         ics_subs[out.group('subdomain')] += 1
+
+# Adds the link to next_links, visited, and ics_subs if relevant
+def add_link(next_links, defragged):
+    next_links.add(defragged)
+    visited.add(defragged)
+    add_subdomain(defragged)
+
+# ------------------------------------- Duplicate detection
 
 def compute_simhash(word_freqs):
     token_hashes = {token: hash(token) for token in word_freqs}
@@ -158,4 +175,35 @@ def check_dup(url, simhash):
     
     simhashes[url] = simhash
     return False
+
+# ---------------------------------- Robots.txt
+
+def fetch_robots(url_parsed, config, next_links):
+    if url_parsed.netloc not in robots:
+        curr_robots = download(url_parsed.scheme + '://' + url_parsed.netloc + '/robots.txt', config)
+        if 200 <= curr_robots.status < 400 and curr_robots.raw_response:
+            robots[defragged_parsed.netloc] = Protego.parse(curr_robots.raw_response.text)
+
+            # Get sites from sitemap
+            check_sitemaps(url_parsed, config, next_links)
+        else:
+            robots[defragged_parsed.netloc] = False
+
+def check_sitemaps(url_parsed, config, next_links):
+    sitemaps = robots[url_parsed.netloc].sitemaps
+    for sitemap in sitemaps:
+        curr_sitemap = download(sitemap, config)
+        if 200 <= curr_sitemap.status < 400 and curr_sitemap.raw_response:
+            sitemap_soup = BeautifulSoup(curr_sitemap.raw_response.text, 'lxml')
+            locs = sitemap_soup.find_all('loc')
+
+            for loc in locs:
+                print(loc.text)
+                loc_defragged = urldefrag(loc.text)[0]
+                if loc_defragged not in visited and is_valid(loc_defragged):
+                    add_link(next_links, loc_defragged)
     
+    
+# today.uci.edu/robots.txt is not accessible through cache, so manually add it
+with open('today_robots.txt') as f:
+    robots['today.uci.edu'] = Protego.parse(f.read())
