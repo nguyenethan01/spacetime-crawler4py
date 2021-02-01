@@ -52,7 +52,7 @@ def extract_next_links(url, resp, config):
 
             # Fetch robots.txt if not found yet
             defragged_parsed = urlparse(defragged)
-            fetch_robots(defragged, config, next_links)
+            fetch_robots(defragged_parsed, config, next_links)
             
             # Add to next_links if valid and robots.txt permits
             if defragged not in visited and is_valid(defragged) and \
@@ -156,7 +156,6 @@ def compute_simhash(word_freqs):
     return fingerprint
 
 def check_dup(url, simhash):
-    # print(simhash)
 
     for _url, _hash in simhashes.items():
         if url == _url: continue
@@ -169,7 +168,6 @@ def check_dup(url, simhash):
                 total += 1
             curr_hash >>= 1
             _hash >>= 1
-        # print(_url, total / 32)
         if total / 32 >= THRESHOLD:
             return True
     
@@ -182,12 +180,12 @@ def fetch_robots(url_parsed, config, next_links):
     if url_parsed.netloc not in robots:
         curr_robots = download(url_parsed.scheme + '://' + url_parsed.netloc + '/robots.txt', config)
         if 200 <= curr_robots.status < 400 and curr_robots.raw_response:
-            robots[defragged_parsed.netloc] = Protego.parse(curr_robots.raw_response.text)
+            robots[url_parsed.netloc] = Protego.parse(curr_robots.raw_response.text)
 
             # Get sites from sitemap
             check_sitemaps(url_parsed, config, next_links)
         else:
-            robots[defragged_parsed.netloc] = False
+            robots[url_parsed.netloc] = False
 
 def check_sitemaps(url_parsed, config, next_links):
     sitemaps = robots[url_parsed.netloc].sitemaps
@@ -198,7 +196,6 @@ def check_sitemaps(url_parsed, config, next_links):
             locs = sitemap_soup.find_all('loc')
 
             for loc in locs:
-                print(loc.text)
                 loc_defragged = urldefrag(loc.text)[0]
                 if loc_defragged not in visited and is_valid(loc_defragged):
                     add_link(next_links, loc_defragged)
